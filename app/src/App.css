@@ -1,0 +1,43 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1f2937; }
+
+.dashboard-container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+.header { margin-bottom: 2rem; }
+.header-title { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
+.header h1 { font-size: 1.5rem; color: #111827; }
+.header h1 span { color: #6b7280; font-weight: 400; }
+.header p { color: #4b5563; font-size: 0.95rem; }
+
+.icon-large { width: 28px; height: 28px; color: #2563eb; }
+.icon-small { width: 18px; height: 18px; }
+.spin { animation: spin 1s linear infinite; }
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+.search-card, .results-card { background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 1.5rem; }
+
+.search-card label { display: block; font-weight: 500; margin-bottom: 0.5rem; font-size: 0.9rem; }
+.input-group { display: flex; gap: 1rem; }
+input { flex: 1; padding: 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-size: 1rem; }
+input:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+button { display: flex; align-items: center; gap: 0.5rem; padding: 0.75rem 1.5rem; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background-color: #2563eb; color: white; }
+.btn-primary:hover:not(:disabled) { background-color: #1d4ed8; }
+.btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-secondary { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+.btn-secondary:hover { background-color: #e5e7eb; }
+
+.results-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+.results-header h2 { font-size: 1.25rem; }
+
+.table-container { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; text-align: left; }
+th, td { padding: 0.75rem 1rem; border-bottom: 1px solid #e5e7eb; }
+th { background-color: #f9fafb; font-weight: 600; color: #4b5563; font-size: 0.85rem; text-transform: uppercase; }
+td { font-size: 0.95rem; }
+td a { color: #2563eb; text-decoration: none; font-weight: 500; }
+td a:hover { text-decoration: underline; }
+
+.badge { background-color: #e0e7ff; color: #3730a3; padding: 0.25rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 500; }
+.error-text { color: #dc2626; margin-top: 0.5rem; font-size: 0.9rem; }
