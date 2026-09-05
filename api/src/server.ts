@@ -42,6 +42,7 @@ app.post('/api/search', async (req: Request, res: Response): Promise<void> => {
                         developer: app.developer,
                         score: app.score,
                         free: app.free,
+                        summary: app.summary, // Descrição adicionada
                         keywordOrigin: term,
                         url: app.url
                     });

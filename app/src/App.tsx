@@ -8,6 +8,7 @@ interface AppData {
   developer: string;
   score: string | number;
   free: boolean;
+  summary: string; // Nova propriedade
   keywordOrigin: string;
   url: string;
 }
@@ -20,7 +21,6 @@ export default function App() {
 
   const handleSearch = async () => {
     if (!terms.trim()) return;
-    
     setLoading(true);
     setError('');
     setResults([]);
@@ -43,13 +43,18 @@ export default function App() {
   const exportToCSV = () => {
     if (results.length === 0) return;
     
-    const headers = ['Título,Desenvolvedor,Nota,Gratuito,Palavra-Chave,Link\n'];
-    const rows = results.map(app => 
-      `"${app.title}","${app.developer}","${app.score}","${app.free ? 'Sim' : 'Não'}","${app.keywordOrigin}","${app.url}"`
-    );
+    // Mudança para ponto e vírgula (Padrão do Excel no Brasil)
+    const headers = ['Título;Desenvolvedor;Nota;Gratuito;Palavra-Chave;Descrição;Link\n'];
+    
+    const rows = results.map(app => {
+      // Limpa quebras de linha e aspas da descrição para não quebrar o Excel
+      const cleanSummary = app.summary ? app.summary.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : 'Sem descrição';
+      return `"${app.title}";"${app.developer}";"${app.score}";"${app.free ? 'Sim' : 'Não'}";"${app.keywordOrigin}";"${cleanSummary}";"${app.url}"`;
+    });
     
     const csvContent = headers.concat(rows).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Adiciona o caractere \uFEFF (BOM) para forçar o Excel a ler os acentos (UTF-8) corretamente
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
     const link = document.createElement('a');
@@ -92,7 +97,7 @@ export default function App() {
         {results.length > 0 && (
           <div className="results-card">
             <div className="results-header">
-              <h2>{results.length} Aplicativos Encontrados</h2>
+              <h2 className="title-destaque">{results.length} Aplicativos Encontrados</h2>
               <button onClick={exportToCSV} className="btn-secondary">
                 <Download className="icon-small" />
                 Exportar CSV
@@ -105,6 +110,7 @@ export default function App() {
                   <tr>
                     <th>Título</th>
                     <th>Desenvolvedor</th>
+                    <th>Descrição</th>
                     <th>Nota</th>
                     <th>Gratuito</th>
                     <th>Palavra-Chave</th>
@@ -113,8 +119,9 @@ export default function App() {
                 <tbody>
                   {results.map((app, index) => (
                     <tr key={index}>
-                      <td><a href={app.url} target="_blank" rel="noopener noreferrer">{app.title}</a></td>
+                      <td className="titulo-app"><a href={app.url} target="_blank" rel="noopener noreferrer">{app.title}</a></td>
                       <td>{app.developer}</td>
+                      <td className="desc-cell">{app.summary ? app.summary : '-'}</td>
                       <td>{app.score !== 'Sem Avaliação' ? Number(app.score).toFixed(1) : '-'}</td>
                       <td>{app.free ? 'Sim' : 'Não'}</td>
                       <td><span className="badge">{app.keywordOrigin}</span></td>
