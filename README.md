@@ -1,25 +1,45 @@
-# 🔍 AppBench: Extrator e Analisador de Aplicativos
+# AppBench | Intelligence
 
-Um painel de inteligência de mercado (*Market Intelligence Dashboard*) desenvolvido para automatizar a extração, contagem e análise estrutural de aplicativos na Google Play Store, ignorando anúncios e limitações de paginação.
+Uma ferramenta metodológica de extração e benchmarking de aplicativos da Google Play Store, desenvolvida para dar suporte a pesquisas acadêmicas (Iniciação Científica) na identificação e filtragem de soluções móveis voltadas à saúde.
 
-**Estudo de Caso Base:** Este projeto nasceu como ferramenta metodológica para uma Iniciação Científica focada no benchmarking de aplicativos móveis para o cuidado pré-natal na Atenção Primária à Saúde.
+**Acesso ao Sistema (Produção):** [https://appbench-ic.vercel.app/](https://appbench-ic.vercel.app/)
 
-## 🚀 O Problema que Resolve
-Pesquisadores e analistas de mercado enfrentam três grandes barreiras ao mapear aplicativos nas lojas oficiais:
-1. **Poluição de Dados:** Resultados orgânicos misturados com apps patrocinados.
-2. **Caixa Preta de Quantidade:** Omissão do número total real de aplicativos para uma palavra-chave.
-3. **Bloqueio de Paginação:** Limite técnico imposto pela loja (geralmente 50 apps por requisição) para evitar raspagem de dados.
+---
 
-O **AppBench** resolve isso cruzando múltiplos termos de busca, removendo duplicatas via IDs únicos e devolvendo um conjunto de dados limpo (JSON/CSV) pronto para análise científica ou mercadológica.
+## Objetivo do Projeto
+Automatizar e aplicar rigor científico na coleta de dados da Play Store, superando as limitações da busca convencional. O sistema realiza uma **Busca Profunda (Deep Fetch)**, varrendo aplicativos em múltiplos idiomas (ASO Multilíngue) e aplicando filtros metodológicos para compor a base de dados da pesquisa.
 
-## 🛠️ Tecnologias Utilizadas (Stack)
-A arquitetura do projeto separa o motor de raspagem de dados da interface do usuário, facilitando a escalabilidade.
+## Principais Funcionalidades (Regras de Negócio)
+- **Filtro de Qualidade (4+ Estrelas):** Exclui sumariamente aplicativos com avaliações inferiores a 4.0, garantindo uma amostra de soluções validadas pelos usuários.
+- **Detecção de Duplicatas:** Identifica quando o mesmo aplicativo aparece em buscas de diferentes palavras-chave, contabilizando-as e agrupando as tags de origem.
+- **Matrizes Globais de Busca:** Botões de pesquisa em lote configurados com palavras-chave traduzidas (Português, Inglês, Espanhol e Francês) para contornar limitações regionais das lojas de aplicativos.
+- **Extração de Metadados Ocultos:** Captura o número real de downloads, desenvolvedor, descrição completa e o ano de atualização.
+- **Exportação Científica:** Geração de arquivo CSV formatado com codificação UTF-8 (BOM) e separador de ponto e vírgula, pronto para leitura limpa no Microsoft Excel.
 
-* **Backend (API):** Node.js com TypeScript
-* **Core de Extração:** `google-play-scraper`
-* **Frontend (Interface):** React (com integração futura para React Native)
-* **Gerenciamento de Pacotes:** NPM / Yarn
+---
 
-## ⚙️ Arquitetura do Sistema
-* `/api`: Microserviço responsável por receber as palavras-chave, gerenciar as requisições assíncronas para a loja e sanitizar os dados (removendo aspas, formatando links).
-* `/app`: Interface visual de consumo da API, exibindo a tabela interativa e opções de exportação de dados.
+## Stack Tecnológica e Arquitetura
+
+O projeto adota uma arquitetura desacoplada (Frontend + Backend):
+
+### Frontend (Vitrine visual)
+- **Tecnologias:** React, TypeScript, Vite, CSS e Lucide Icons.
+- **Hospedagem:** Vercel (Gera páginas estáticas em CDN de alta performance).
+
+### Backend (Motor de extração)
+- **Tecnologias:** Node.js, Express, TypeScript e `google-play-scraper`.
+- **Hospedagem:** Render (Web Service ativo monitorando as requisições de raspagem).
+- **Endpoint da API:** `https://api-appbench.onrender.com/api/search`
+
+---
+
+## Como rodar o projeto localmente
+
+Para rodar este projeto na sua máquina para desenvolvimento, clone o repositório e siga os passos abaixo:
+
+### 1. Inicializando a API (Servidor)
+Abra um terminal na pasta raiz e navegue até o backend:
+```bash
+cd api
+npm install
+npm run dev
