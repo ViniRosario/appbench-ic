@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Search, Download, Loader2, Smartphone } from 'lucide-react';
+import { Search, Download, Loader2, Smartphone, Globe } from 'lucide-react';
 import './App.css';
 
 interface AppData {
@@ -8,24 +8,34 @@ interface AppData {
   developer: string;
   score: string | number;
   free: boolean;
-  summary: string; // Nova propriedade
+  summary: string;
   keywordOrigin: string;
   url: string;
 }
 
 export default function App() {
-  const [terms, setTerms] = useState('pré-natal, gestante');
+  const [terms, setTerms] = useState('');
   const [results, setResults] = useState<AppData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSearch = async () => {
-    if (!terms.trim()) return;
+  // A função agora aceita receber os termos do botão diretamente
+  const handleSearch = async (overrideTerms?: string) => {
+    // Se vier termo do botão, usa ele. Se não, usa o que está digitado no input.
+    const searchString = typeof overrideTerms === 'string' ? overrideTerms : terms;
+    
+    if (!searchString.trim()) return;
+    
+    // Atualiza a barra de pesquisa visualmente se clicou no botão
+    if (typeof overrideTerms === 'string') {
+      setTerms(overrideTerms);
+    }
+
     setLoading(true);
     setError('');
     setResults([]);
 
-    const termsArray = terms.split(',').map(t => t.trim()).filter(t => t);
+    const termsArray = searchString.split(',').map(t => t.trim()).filter(t => t);
 
     try {
       const response = await axios.post('http://localhost:3333/api/search', {
@@ -43,17 +53,14 @@ export default function App() {
   const exportToCSV = () => {
     if (results.length === 0) return;
     
-    // Mudança para ponto e vírgula (Padrão do Excel no Brasil)
     const headers = ['Título;Desenvolvedor;Nota;Gratuito;Palavra-Chave;Descrição;Link\n'];
     
     const rows = results.map(app => {
-      // Limpa quebras de linha e aspas da descrição para não quebrar o Excel
       const cleanSummary = app.summary ? app.summary.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : 'Sem descrição';
       return `"${app.title}";"${app.developer}";"${app.score}";"${app.free ? 'Sim' : 'Não'}";"${app.keywordOrigin}";"${cleanSummary}";"${app.url}"`;
     });
     
     const csvContent = headers.concat(rows).join('\n');
-    // Adiciona o caractere \uFEFF (BOM) para forçar o Excel a ler os acentos (UTF-8) corretamente
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     
@@ -85,13 +92,42 @@ export default function App() {
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               placeholder="Ex: pré-natal, gestante, saúde da mulher"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             />
-            <button onClick={handleSearch} disabled={loading} className="btn-primary">
+            <button onClick={() => handleSearch()} disabled={loading} className="btn-primary">
               {loading ? <Loader2 className="spin icon-small" /> : <Search className="icon-small" />}
               {loading ? 'Buscando...' : 'Pesquisar'}
             </button>
           </div>
           {error && <p className="error-text">{error}</p>}
+
+          {/* NOVA SESSÃO: Botões de Busca Global */}
+          <div className="quick-searches">
+            <span className="quick-searches-label">
+              <Globe className="icon-tiny" /> Matrizes Globais:
+            </span>
+            <button 
+              onClick={() => handleSearch('gestante, gravidez, pregnant, pregnancy, embarazada, embarazo, grossesse')} 
+              className="btn-chip"
+              disabled={loading}
+            >
+              Foco: Gestação (7)
+            </button>
+            <button 
+              onClick={() => handleSearch('pré-natal, prenatal care, prenatal, atención prenatal, cuidados prenatales, soins prénatals')} 
+              className="btn-chip"
+              disabled={loading}
+            >
+              Foco: Pré-natal (6)
+            </button>
+            <button 
+              onClick={() => handleSearch('saúde da mulher, saúde materna, maternal health, women\'s health, salud materna, salud de la mujer')} 
+              className="btn-chip"
+              disabled={loading}
+            >
+              Foco: Saúde Materna (6)
+            </button>
+          </div>
         </div>
 
         {results.length > 0 && (
