@@ -39,7 +39,7 @@ export default function App() {
     const termsArray = searchString.split(',').map(t => t.trim()).filter(t => t);
 
     try {
-      const response = await axios.post('http://localhost:3333/api/search', {
+      const response = await axios.post('https://api-appbench.onrender.com/api/search', {
         terms: termsArray,
       });
       setResults(response.data.data);
