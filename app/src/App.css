@@ -112,3 +112,55 @@ td a:hover { text-decoration: underline; }
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* Aviso de carregamento demorado */
+.loading-warning {
+  color: #d97706;
+  font-size: 0.85rem;
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 500;
+}
+
+/* Painel de estatísticas ao lado do título */
+.dashboard-stats {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.stats-badge {
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.duplicados-badge {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #f87171;
+}
+
+/* Badges de Duplicata na tabela */
+.badge-yes {
+  background-color: #fef08a;
+  color: #854d0e;
+}
+
+.badge-no {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.badge-keyword {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+/* Destaca a linha inteira se for duplicata (Opcional, mas fica bem profissional) */
+.row-duplicate {
+  background-color: #fefce8;
+}
