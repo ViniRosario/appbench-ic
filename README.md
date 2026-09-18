@@ -43,3 +43,15 @@ Abra um terminal na pasta raiz e navegue até o backend:
 cd api
 npm install
 npm run dev
+```
+
+### 2. Inicializando o Frontend (Interface)
+Abra um novo terminal na pasta raiz e navegue até o frontend:
+
+```bash
+cd app
+npm install
+npm run dev
+```
+
+Acesse a aplicação no seu navegador pelo link gerado pelo Vite (geralmente http://localhost:5173).
