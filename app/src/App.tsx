@@ -1,182 +1,96 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { Search, Download, Loader2, Smartphone, Globe, AlertCircle } from 'lucide-react';
+import { Smartphone } from 'lucide-react';
 import './App.css';
-
-interface AppData {
-  title: string;
-  developer: string;
-  score: string | number;
-  free: boolean;
-  summary: string;
-  keywordOrigin: string;
-  url: string;
-  isDuplicate: boolean;
-  installs: string;
-  updatedYear: number;
-}
+import { DEFAULT_FILTERS } from './types';
+import type { Filters, SearchResponse } from './types';
+import { searchApps } from './api';
+import { exportResultsCSV, exportFunnelCSV } from './utils/csv';
+import SearchPanel from './components/SearchPanel';
+import FiltersSidebar from './components/FiltersSidebar';
+import FunnelPanel from './components/FunnelPanel';
+import ResultsTable from './components/ResultsTable';
 
 export default function App() {
   const [terms, setTerms] = useState('');
-  const [results, setResults] = useState<AppData[]>([]);
-  const [duplicatedTotal, setDuplicatedTotal] = useState(0); // Nova variável para o total de duplicados
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [result, setResult] = useState<SearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSearch = async (overrideTerms?: string) => {
-    const searchString = typeof overrideTerms === 'string' ? overrideTerms : terms;
+  const handleSearch = async (override?: string) => {
+    const searchString = typeof override === 'string' ? override : terms;
     if (!searchString.trim()) return;
-    
-    if (typeof overrideTerms === 'string') {
-      setTerms(overrideTerms);
-    }
+    if (typeof override === 'string') setTerms(override);
 
     setLoading(true);
     setError('');
-    setResults([]);
-    setDuplicatedTotal(0);
+    setResult(null);
 
-    const termsArray = searchString.split(',').map(t => t.trim()).filter(t => t);
+    const termsArray = searchString.split(',').map(t => t.trim()).filter(Boolean);
 
     try {
-      const response = await axios.post('https://api-appbench.onrender.com/api/search', {
-        terms: termsArray,
-      });
-      setResults(response.data.data);
-      setDuplicatedTotal(response.data.duplicatedCount); // Salva o total de duplicados
+      setResult(await searchApps(termsArray, filters));
     } catch (err) {
-      setError('Erro ao buscar dados. O servidor demorou muito ou está desligado.');
+      if (axios.isAxiosError(err) && err.response?.data?.error) {
+        setError(`A API respondeu com erro: ${err.response.data.error}`);
+      } else if (axios.isAxiosError(err) && err.code === 'ECONNABORTED') {
+        setError('A busca passou do tempo limite. Tente com menos termos ou menos lojas.');
+      } else {
+        setError('Não foi possível buscar os dados. O servidor pode estar desligado ou demorando para ligar; tente de novo em 1 minuto.');
+      }
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  const exportToCSV = () => {
-    if (results.length === 0) return;
-    
-    // Atualizamos o cabeçalho do Excel
-    const headers = ['Título;Desenvolvedor;Ano;Downloads;Duplicado;Nota;Gratuito;Palavra-Chave;Descrição;Link\n'];
-    
-    const rows = results.map(app => {
-      const cleanSummary = app.summary ? app.summary.replace(/\r?\n|\r/g, ' ').replace(/"/g, '""') : 'Sem descrição';
-      // Inserimos os novos dados nas colunas corretas
-      return `"${app.title}";"${app.developer}";"${app.updatedYear}";"${app.installs}";"${app.isDuplicate ? 'Sim' : 'Não'}";"${app.score}";"${app.free ? 'Sim' : 'Não'}";"${app.keywordOrigin}";"${cleanSummary}";"${app.url}"`;
-    });
-    
-    const csvContent = headers.concat(rows).join('\n');
-    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'benchmarking_apps_pesquisa.csv');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const termCount = terms.split(',').filter(t => t.trim()).length;
 
   return (
-    <div className="dashboard-container">
-      <header className="header">
-        <div className="header-title">
-          <Smartphone className="icon-large" />
-          <h1>AppBench <span>| Intelligence</span></h1>
-        </div>
-        <p>Extrator metodológico para benchmarking de aplicativos na Play Store (Filtro 4+ Estrelas)</p>
+    <div className="app-shell">
+      <header className="topbar">
+        <Smartphone size={22} />
+        <h1>AppBench</h1>
+        <span>Busca de aplicativos de saúde na Play Store para pesquisa acadêmica</span>
       </header>
 
-      <main className="main-content">
-        <div className="search-card">
-          <label htmlFor="search">Termos de busca (separados por vírgula):</label>
-          <div className="input-group">
-            <input 
-              id="search"
-              type="text" 
-              value={terms}
-              onChange={(e) => setTerms(e.target.value)}
-              placeholder="Ex: pré-natal, gestante, saúde da mulher"
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-            />
-            <button onClick={() => handleSearch()} disabled={loading} className="btn-primary">
-              {loading ? <Loader2 className="spin icon-small" /> : <Search className="icon-small" />}
-              {loading ? 'Extraindo...' : 'Pesquisar'}
-            </button>
-          </div>
-          
-          {loading && (
-            <p className="loading-warning">
-              <AlertCircle className="icon-tiny" /> 
-              Realizando Busca Profunda. Isso pode levar até 30 segundos...
-            </p>
+      <div className="layout">
+        <aside className="sidebar">
+          <FiltersSidebar filters={filters} setFilters={setFilters} termCount={termCount} />
+        </aside>
+
+        <main className="content">
+          <SearchPanel terms={terms} setTerms={setTerms} loading={loading} error={error} onSearch={handleSearch} />
+
+          {!result && !loading && !error && (
+            <div className="empty">
+              <h2>Nenhuma pesquisa ainda</h2>
+              <p>Digite os termos acima ou use um conjunto pronto. Ajuste os filtros ao lado antes de pesquisar.</p>
+            </div>
           )}
-          
-          {error && <p className="error-text">{error}</p>}
 
-          <div className="quick-searches">
-            <span className="quick-searches-label">
-              <Globe className="icon-tiny" /> Matrizes Globais:
-            </span>
-            <button onClick={() => handleSearch('gestante, gravidez, pregnant, pregnancy, embarazada, embarazo, grossesse')} className="btn-chip" disabled={loading}>
-              Foco: Gestação (7)
-            </button>
-            <button onClick={() => handleSearch('pré-natal, prenatal care, prenatal, atención prenatal, cuidados prenatales, soins prénatals')} className="btn-chip" disabled={loading}>
-              Foco: Pré-natal (6)
-            </button>
-            <button onClick={() => handleSearch('saúde da mulher, saúde materna, maternal health, women\'s health, salud materna, salud de la mujer')} className="btn-chip" disabled={loading}>
-              Foco: Saúde Materna (6)
-            </button>
-          </div>
-        </div>
+          {result?.funnel && (
+            <FunnelPanel
+              funnel={result.funnel}
+              searches={result.searches}
+              meta={result.meta}
+              onExport={() => exportFunnelCSV(result.funnel!, result.searches, result.meta)}
+            />
+          )}
 
-        {results.length > 0 && (
-          <div className="results-card">
-            <div className="results-header">
-              <div className="dashboard-stats">
-                <h2 className="title-destaque">{results.length} Apps Aprovados</h2>
-                <span className="stats-badge duplicados-badge">
-                  {duplicatedTotal} {duplicatedTotal === 1 ? 'Duplicata Encontrada' : 'Duplicatas Encontradas'}
-                </span>
-              </div>
-              <button onClick={exportToCSV} className="btn-secondary">
-                <Download className="icon-small" />
-                Exportar CSV
-              </button>
+          {result && result.data.length > 0 && (
+            <ResultsTable results={result.data} onExport={rows => exportResultsCSV(rows, result.meta)} />
+          )}
+
+          {result && result.data.length === 0 && (
+            <div className="empty">
+              <h2>Nenhum app passou nos filtros</h2>
+              <p>Tente diminuir a nota mínima ou desmarcar &quot;somente gratuitos&quot;.</p>
             </div>
-
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Título</th>
-                    <th>Ano</th>
-                    <th>Downloads</th>
-                    <th>Duplicado</th>
-                    <th>Descrição</th>
-                    <th>Palavra-Chave</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((app, index) => (
-                    <tr key={index} className={app.isDuplicate ? 'row-duplicate' : ''}>
-                      <td className="titulo-app"><a href={app.url} target="_blank" rel="noopener noreferrer">{app.title}</a></td>
-                      <td><strong>{app.updatedYear}</strong></td>
-                      <td>{app.installs}</td>
-                      <td>
-                        <span className={`badge ${app.isDuplicate ? 'badge-yes' : 'badge-no'}`}>
-                          {app.isDuplicate ? 'Sim' : 'Não'}
-                        </span>
-                      </td>
-                      <td className="desc-cell">{app.summary ? app.summary : '-'}</td>
-                      <td><span className="badge badge-keyword">{app.keywordOrigin}</span></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
