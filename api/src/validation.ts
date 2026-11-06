@@ -1,35 +1,31 @@
-import { ALLOWED_INSTALLS, DEFAULT_COUNTRY, DEFAULT_LANG, DEFAULT_LIMIT, MAX_LIMIT, MAX_TERMS } from './config.js';
-import type { Filters } from './types.js';
-
-const clamp = (n: number, min: number, max: number): number => Math.min(max, Math.max(min, n));
-
-const isLocaleCode = (v: unknown): v is string => typeof v === 'string' && /^[a-z]{2}$/i.test(v);
+import { DEFAULT_COUNTRY, DEFAULT_LANG, MAX_TERMS, SUPPORTED_LANGS } from './config.js';
+import type { Locale } from './types.js';
 
 export const asRecord = (body: unknown): Record<string, unknown> =>
     typeof body === 'object' && body !== null ? (body as Record<string, unknown>) : {};
 
-export function parseFilters(b: Record<string, unknown>): Filters {
-    const installs = Number(b.minInstalls) || 0;
-    return {
-        minScore: clamp(Number(b.minScore) || 0, 0, 5),
-        minInstalls: ALLOWED_INSTALLS.includes(installs) ? installs : 0,
-        recentOnly: b.recentOnly === true,
-        price: b.price === 'free' || b.price === 'paid' ? b.price : 'all',
-        // padrão: jogos excluídos (só inclui se o cliente enviar false explicitamente)
-        excludeGames: b.excludeGames !== false,
-        lang: isLocaleCode(b.lang) ? b.lang.toLowerCase() : DEFAULT_LANG,
-        country: isLocaleCode(b.country) ? b.country.toLowerCase() : DEFAULT_COUNTRY,
-    };
+/** País (2 letras) e idioma da loja. Idiomas limitados aos que a API sabe interpretar (datas). */
+export function parseLocale(b: Record<string, unknown>): Locale {
+    const country = typeof b.country === 'string' && /^[a-z]{2}$/i.test(b.country) ? b.country.toLowerCase() : DEFAULT_COUNTRY;
+    const lang = typeof b.lang === 'string' ? b.lang.toLowerCase() : '';
+    return { country, lang: SUPPORTED_LANGS.includes(lang) ? lang : DEFAULT_LANG };
 }
 
-/** Termos únicos, sem espaços nas pontas e limitados a MAX_TERMS. */
+/** Termos únicos (ignorando maiúsculas), sem espaços nas pontas e limitados a MAX_TERMS. */
 export function parseTerms(raw: unknown): string[] {
     if (!Array.isArray(raw)) return [];
-    const terms = raw.filter((t): t is string => typeof t === 'string').map((t) => t.trim()).filter(Boolean);
-    return [...new Set(terms)].slice(0, MAX_TERMS);
+    const seen = new Set<string>();
+    const terms: string[] = [];
+    for (const t of raw) {
+        if (typeof t !== 'string') continue;
+        const term = t.trim().replace(/\s+/g, ' ');
+        const key = term.toLocaleLowerCase('pt-BR');
+        if (!term || seen.has(key)) continue;
+        seen.add(key);
+        terms.push(term);
+    }
+    return terms.slice(0, MAX_TERMS);
 }
-
-export const parseLimit = (raw: unknown): number => clamp(Number(raw) || DEFAULT_LIMIT, 1, MAX_LIMIT);
 
 /** Aceita um ID ("com.empresa.app") ou uma URL da Play Store com ?id=... */
 export function extractAppId(input: unknown): string | null {
