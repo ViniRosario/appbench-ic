@@ -1,21 +1,39 @@
 export const PORT = Number(process.env.PORT) || 3333;
 
-// Limites de entrada
+// Entrada
 export const MAX_TERMS = 10;
-export const DEFAULT_LIMIT = 50; // resultados por termo
-export const MAX_LIMIT = 100;
-export const ALLOWED_INSTALLS = [0, 10_000, 100_000, 1_000_000, 10_000_000];
 export const DEFAULT_LANG = 'pt';
 export const DEFAULT_COUNTRY = 'br';
+/** Idiomas cujo formato de data a API interpreta (ver lib/dates.ts). */
+export const SUPPORTED_LANGS = ['pt', 'en', 'es'];
 
-// Extração
-export const DETAIL_CONCURRENCY = 4; // requisições simultâneas ao Google
-export const SIMILAR_EXPANSION = 3; // quantos concorrentes diretos também são expandidos
-export const RECENT_YEARS = 2;
+/**
+ * A Play Store encerra a paginação da busca em ~250 apps (medido: a loja não devolve
+ * mais páginas depois disso). É também o máximo aceito pela google-play-scraper.
+ * Sempre pedimos a lista completa: cortar antes descarta apps relevantes.
+ */
+export const STORE_RESULTS_LIMIT = 250;
 
-// Cache
-export const DETAILS_TTL_MS = 6 * 60 * 60 * 1000;
-export const LIST_TTL_MS = 60 * 60 * 1000;
+/**
+ * Para alguns termos a loja varia a lista entre consultas idênticas (medido: "terapia" devolveu
+ * 248, 248, 250 e 250 apps, com 6 aparecendo só em parte das consultas). Por isso cada lista é
+ * consultada até estabilizar — no mínimo 2 vezes, parando quando uma consulta não traz app novo —
+ * e a amostra usa a união.
+ */
+export const LIST_MIN_PASSES = 2;
+export const LIST_MAX_PASSES = 5;
+
+// Acesso à loja
+export const STORE_CONCURRENCY = 4; // requisições simultâneas à Play Store, somando todas as buscas
+export const RETRY_ATTEMPTS = 4; // tentativas por requisição (backoff exponencial: 1s, 2s, 4s)
+export const RETRY_BASE_DELAY_MS = 1000;
+export const FINAL_RETRY_DELAY_MS = 3000; // pausa entre as releituras finais de apps que falharam
+
+// Cache dos detalhes de cada app (curto; cada app informa quando foi lido em `fetchedAt`).
+// As listas da loja nunca são cacheadas — ver services/playStore.ts.
+export const DETAILS_TTL_MS = 60 * 60 * 1000;
 export const CACHE_MAX_ENTRIES = 5_000;
 
-export const YEAR_MS = 365.25 * 24 * 60 * 60 * 1000;
+// Coletas em segundo plano
+export const JOB_TTL_MS = 30 * 60 * 1000; // por quanto tempo o resultado fica disponível
+export const MAX_RUNNING_JOBS = 3;

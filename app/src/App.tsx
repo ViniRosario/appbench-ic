@@ -1,14 +1,20 @@
+import { useMemo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { FiltersPanel } from './components/FiltersPanel';
 import { Header } from './components/Header';
 import { ResultsPanel } from './components/ResultsPanel';
 import { SearchForm } from './components/SearchForm';
 import { SearchModeTabs } from './components/SearchModeTabs';
+import { SearchProgress } from './components/SearchProgress';
 import { useAppSearch } from './hooks/useAppSearch';
+import { categoryOptions, countActive } from './lib/criteria';
 
 export default function App() {
-  const { mode, changeMode, query, setQuery, filters, setFilters, response, loading, error, search } = useAppSearch();
+  const s = useAppSearch();
+  const { response, analysis, loading } = s;
 
+  const categories = useMemo(() => (response ? categoryOptions(response.apps) : null), [response]);
+  const activeFilters = countActive(s.criteria);
   const showHero = !response && !loading;
 
   return (
@@ -29,27 +35,46 @@ export default function App() {
             </div>
           )}
 
-          <SearchModeTabs mode={mode} onChange={changeMode} disabled={loading} />
-          <SearchForm mode={mode} query={query} onQueryChange={setQuery} onSubmit={() => void search()} loading={loading} />
+          <SearchModeTabs mode={s.mode} onChange={s.changeMode} disabled={loading} />
+          <SearchForm
+            mode={s.mode}
+            query={s.query}
+            onQueryChange={s.setQuery}
+            market={s.market}
+            onMarketChange={s.setMarket}
+            onSubmit={() => void s.search()}
+            loading={loading}
+          />
 
-          <div className="mt-6">
-            <FiltersPanel filters={filters} onChange={setFilters} disabled={loading} />
-          </div>
-
-          {loading && (
-            <p className="mt-6 inline-flex items-center gap-2 text-sm text-amber-700">
-              <AlertCircle className="size-4" />
-              Realizando busca profunda em cada app. Pode levar até 1 minuto.
-            </p>
-          )}
-          {error && (
+          {loading && <SearchProgress progress={s.progress} />}
+          {s.error && (
             <p className="mt-6 inline-flex items-center gap-2 rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
-              <AlertCircle className="size-4 shrink-0" /> {error}
+              <AlertCircle className="size-4 shrink-0" /> {s.error}
             </p>
           )}
         </section>
 
-        {response && <ResultsPanel response={response} />}
+        <div className="mx-auto mt-6 max-w-5xl">
+          <FiltersPanel
+            mode={response?.mode ?? s.mode}
+            criteria={s.criteria}
+            onChange={s.setCriteria}
+            onReset={s.resetCriteria}
+            categories={categories}
+            seedCategory={response?.seed}
+            summary={analysis && response ? { included: analysis.included.length, total: response.funnel.unique } : undefined}
+          />
+        </div>
+
+        {response && analysis && (
+          <ResultsPanel
+            response={response}
+            analysis={analysis}
+            criteria={s.criteria}
+            activeFilters={activeFilters}
+            onResetCriteria={s.resetCriteria}
+          />
+        )}
       </main>
     </div>
   );

@@ -1,19 +1,26 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
-import { DETAIL_CONCURRENCY, SIMILAR_EXPANSION } from '../config.js';
-import { mapLimit } from '../lib/async.js';
-import { fetchDetails, similarApps } from '../services/playStore.js';
-import { addCandidate, buildResponse, enrichAndFilter } from '../services/pipeline.js';
-import type { CandidateMap } from '../services/pipeline.js';
-import type { AppDetails, Candidate, SeedInfo } from '../types.js';
-import { asRecord, extractAppId, parseFilters } from '../validation.js';
+import { isNotFound } from '../lib/errors.js';
+import { startJob } from '../services/jobs.js';
+import { fetchDetails, isSimilarAvailable } from '../services/playStore.js';
+import { runSimilarSearch } from '../services/searches.js';
+import type { AppDetails } from '../types.js';
+import { asRecord, extractAppId, parseLocale } from '../validation.js';
+import { BUSY_MESSAGE } from './messages.js';
 
-/** Modo 2: concorrentes / apps semelhantes a um app informado. */
+/** Modo 2: concorrentes. Valida o app na hora (404 rápido) e roda a coleta em segundo plano. */
 export const similarRouter = Router();
 
 similarRouter.post('/api/similar', async (req: Request, res: Response): Promise<void> => {
+    if (!isSimilarAvailable()) {
+        res.status(503).json({
+            error: 'Modo concorrente indisponível: a correção da biblioteca google-play-scraper não está aplicada no servidor.',
+        });
+        return;
+    }
+
     const body = asRecord(req.body);
-    const f = parseFilters(body);
+    const locale = parseLocale(body);
     const appId = extractAppId(body.app);
 
     if (!appId) {
@@ -21,54 +28,25 @@ similarRouter.post('/api/similar', async (req: Request, res: Response): Promise<
         return;
     }
 
-    console.log(`\n🔎 [similar] ${appId} | filtros: ${JSON.stringify(f)}`);
-
-    let seedDetails: AppDetails;
+    let seed: AppDetails;
     try {
-        seedDetails = await fetchDetails(appId, f);
-    } catch {
-        res.status(404).json({ error: `Aplicativo '${appId}' não encontrado na Play Store (${f.country.toUpperCase()}).` });
+        seed = await fetchDetails(appId, locale);
+    } catch (err) {
+        if (isNotFound(err)) {
+            res.status(404).json({ error: `Aplicativo '${appId}' não encontrado na Play Store (${locale.country.toUpperCase()}).` });
+        } else {
+            console.error(`Falha ao ler o app ${appId}:`, err);
+            res.status(502).json({ error: 'Não foi possível ler o app informado na Play Store. Tente novamente em instantes.' });
+        }
         return;
     }
 
-    const seed: SeedInfo = {
-        appId: seedDetails.appId,
-        title: seedDetails.title,
-        developer: seedDetails.developer,
-        icon: seedDetails.icon,
-        genre: seedDetails.genre,
-        url: seedDetails.url,
-    };
-
-    try {
-        const candidates: CandidateMap = new Map();
-
-        // Nível 1: concorrentes diretos do app informado.
-        const direct = await similarApps(appId, f);
-        direct.forEach((item, rank) => addCandidate(candidates, item, seed.title, rank));
-
-        // Nível 2: expande pelos principais concorrentes diretos para ampliar a amostra.
-        // Apps que aparecem em várias listas sobem no ranking (mais `sources`).
-        const toExpand = direct.slice(0, SIMILAR_EXPANSION);
-        const expanded = await mapLimit(toExpand, DETAIL_CONCURRENCY, (item) => similarApps(item.appId, f).catch(() => []));
-        expanded.forEach((list, i) => {
-            const origin = toExpand[i]?.title ?? '';
-            list.forEach((item, rank) => addCandidate(candidates, item, origin, direct.length + rank));
-        });
-
-        candidates.delete(appId); // o próprio app não é concorrente dele mesmo
-
-        // Concorrentes diretos sempre entram; os indiretos (nível 2) só se forem da mesma categoria
-        // do app informado. Isso evita "ruído" (ex: redes sociais em uma busca por bancos).
-        const directIds = new Set(direct.map((item) => item.appId));
-        const isRelevant = (c: Candidate, d: AppDetails) =>
-            directIds.has(c.appId) || !seedDetails.genreId || d.genreId === seedDetails.genreId;
-
-        const { data, excluded } = await enrichAndFilter([...candidates.values()], f, 'similar', isRelevant);
-        console.log(`✅ [similar] ${candidates.size} varridos → ${data.length} aprovados`, excluded);
-        res.json(buildResponse('similar', candidates.size, data, excluded, seed));
-    } catch (error) {
-        console.error('Erro na busca por similares:', error);
-        res.status(502).json({ error: 'Falha ao buscar concorrentes na loja. Tente novamente em instantes.' });
+    const job = startJob((report) => runSimilarSearch(seed, locale, report));
+    if (!job) {
+        res.status(429).json({ error: BUSY_MESSAGE });
+        return;
     }
+
+    console.log(`\n🔎 [similar ${job.jobId}] ${appId} | loja: ${locale.country}-${locale.lang}`);
+    res.status(202).json({ jobId: job.jobId });
 });

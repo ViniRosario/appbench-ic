@@ -1,0 +1,27 @@
+diff --git a/node_modules/google-play-scraper/lib/similar.js b/node_modules/google-play-scraper/lib/similar.js
+index 2bb8fd8..9dc2430 100644
+--- a/node_modules/google-play-scraper/lib/similar.js
++++ b/node_modules/google-play-scraper/lib/similar.js
+@@ -73,14 +73,17 @@ function parseSimilarApps (similarObject, opts) {
+     throw Error('Similar apps not found');
+   }
+ 
+-  let similarAppsCluster = clusters.filter(cluster => {
+-    return R.path(CLUSTER_MAPPING.title, cluster) === SIMILAR_APPS ||
+-      R.path(CLUSTER_MAPPING.title, cluster) === SIMILAR_GAMES ||
+-      clusters;
++  // [appbench patch] O filtro original terminava com `|| clusters` (sempre verdadeiro) e
++  // usava a 1ª seção da página — p. ex. "More by <desenvolvedor>" — como se fosse "Similar apps".
++  // A página é pedida com hl=en, então os títulos das seções vêm em inglês.
++  const similarAppsCluster = clusters.filter(cluster => {
++    const title = R.path(CLUSTER_MAPPING.title, cluster);
++    return title === SIMILAR_APPS || title === SIMILAR_GAMES;
+   });
+ 
++  // Sem a seção de semelhantes, a página não exibe apps semelhantes: nunca usar outra seção no lugar.
+   if (similarAppsCluster.length === 0) {
+-    similarAppsCluster = clusters;
++    return [];
+   }
+ 
+   const clusterUrl = getParsedCluster(similarAppsCluster[0]);

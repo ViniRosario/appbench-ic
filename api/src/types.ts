@@ -1,21 +1,8 @@
-import type { SearchFilters } from '../../shared/contract.js';
+import type { AppSource, StoreLocale } from '../../shared/contract.js';
 
-export type {
-    AppResult,
-    ExclusionStats,
-    PriceFilter,
-    SearchMode,
-    SearchResponse,
-    SeedInfo,
-} from '../../shared/contract.js';
+export type * from '../../shared/contract.js';
 
-/** Filtros já validados, com o idioma/país usados na Play Store. */
-export interface Filters extends SearchFilters {
-    lang: string;
-    country: string;
-}
-
-/** App encontrado na fase de varredura (dados rasos, antes do deep fetch). */
+/** App encontrado nas listas da loja (dados rasos, antes de ler a página do app). */
 export interface Candidate {
     appId: string;
     title: string;
@@ -23,27 +10,35 @@ export interface Candidate {
     icon: string;
     summary: string;
     url: string;
-    sources: string[]; // termos (modo keyword) ou apps de origem (modo similar)
-    bestRank: number;
+    sources: AppSource[];
 }
 
-/** Metadados reais extraídos da página do app. */
+/** Metadados lidos da página do app na Play Store. */
 export interface AppDetails {
     appId: string;
     title: string;
     developer: string;
     icon: string;
     summary: string;
+    description: string;
     url: string;
-    score: number;
+    score: number | null;
+    scoreText: string;
     ratings: number;
     installs: string;
     minInstalls: number;
-    updated: number;
-    released: string;
+    updated: number; // timestamp (ms); 0 se a loja não informa
+    released: string; // ISO; '' se a loja não informa
     genre: string;
     genreId: string;
     free: boolean;
     price: number;
     priceText: string;
+    adSupported: boolean;
+    offersIAP: boolean;
+    iapRange: string;
+    contentRating: string;
+    fetchedAt: string;
 }
+
+export type Locale = StoreLocale;
