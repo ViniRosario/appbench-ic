@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown, ExternalLink, Star } from 'lucide-react';
-import type { AppData, SearchMode } from '../types';
+import type { AppResult, SearchMode } from '../types';
 
 type SortKey = 'relevance' | 'title' | 'score' | 'minInstalls' | 'updatedAt';
 
 interface Props {
-  apps: AppData[];
+  apps: AppResult[];
   mode: SearchMode;
 }
 
@@ -133,12 +133,12 @@ export function ResultsTable({ apps, mode }: Props) {
               <td className="whitespace-nowrap px-4 py-3 text-slate-600">{formatDate(a.updatedAt)}</td>
               <td className="px-4 py-3">
                 {mode === 'similar' ? (
-                  <span className="text-xs text-slate-500" title={`Aparece em: ${a.keywordOrigin}`}>
-                    {a.matchedTerms > 1 ? `Citado ${a.matchedTerms}x` : 'Citado 1x'}
+                  <span className="text-xs text-slate-500" title={`Aparece em: ${a.sources.join(', ')}`}>
+                    Citado {a.sources.length}x
                   </span>
                 ) : (
                   <div className="flex max-w-60 flex-wrap gap-1">
-                    {a.keywordOrigin.split(', ').map((k) => (
+                    {a.sources.map((k) => (
                       <span key={k} className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
                         {k}
                       </span>

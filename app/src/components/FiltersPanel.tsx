@@ -15,6 +15,7 @@ const SCORE_OPTIONS = [
   { value: 4.5, label: '4.5+' },
 ];
 
+// Valores aceitos pela API: ALLOWED_INSTALLS em api/src/config.ts
 const INSTALL_OPTIONS = [
   { value: 0, label: 'Qualquer' },
   { value: 10_000, label: '10 mil+' },
@@ -135,6 +136,7 @@ export function FiltersPanel({ filters, onChange, disabled }: Props) {
           </div>
         </Field>
 
+        {/* "2 anos" = RECENT_YEARS em api/src/config.ts */}
         <div className="col-span-2 flex flex-wrap items-end gap-x-6 gap-y-2 md:col-span-1 md:justify-end">
           <Toggle
             checked={filters.recentOnly}
