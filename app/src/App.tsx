@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { AlertCircle } from 'lucide-react';
 import { FiltersPanel } from './components/FiltersPanel';
+import { Footer } from './components/Footer';
 import { Header } from './components/Header';
 import { ResultsPanel } from './components/ResultsPanel';
 import { SearchForm } from './components/SearchForm';
@@ -76,6 +77,8 @@ export default function App() {
           />
         )}
       </main>
+
+      <Footer />
     </div>
   );
 }
