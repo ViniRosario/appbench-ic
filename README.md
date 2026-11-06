@@ -1,57 +1,121 @@
-# AppBench | Intelligence
+# AppBench
 
-Uma ferramenta metodológica de extração e benchmarking de aplicativos da Google Play Store, desenvolvida para dar suporte a pesquisas acadêmicas (Iniciação Científica) na identificação e filtragem de soluções móveis voltadas à saúde.
+Ferramenta de extração e benchmarking de aplicativos da Google Play Store. Nasceu para apoiar uma pesquisa de Iniciação Científica (mapeamento de apps de saúde) e hoje funciona para qualquer nicho: gera amostras limpas e filtradas de apps e exporta para análise no Excel.
 
-**Acesso ao Sistema (Produção):** [https://appbench-ic.vercel.app/](https://appbench-ic.vercel.app/)
-
----
-
-## Objetivo do Projeto
-Automatizar e aplicar rigor científico na coleta de dados da Play Store, superando as limitações da busca convencional. O sistema realiza uma **Busca Profunda (Deep Fetch)**, varrendo aplicativos em múltiplos idiomas (ASO Multilíngue) e aplicando filtros metodológicos para compor a base de dados da pesquisa.
-
-## Principais Funcionalidades (Regras de Negócio)
-- **Filtro de Qualidade (4+ Estrelas):** Exclui sumariamente aplicativos com avaliações inferiores a 4.0, garantindo uma amostra de soluções validadas pelos usuários.
-- **Detecção de Duplicatas:** Identifica quando o mesmo aplicativo aparece em buscas de diferentes palavras-chave, contabilizando-as e agrupando as tags de origem.
-- **Matrizes Globais de Busca:** Botões de pesquisa em lote configurados com palavras-chave traduzidas (Português, Inglês, Espanhol e Francês) para contornar limitações regionais das lojas de aplicativos.
-- **Extração de Metadados Ocultos:** Captura o número real de downloads, desenvolvedor, descrição completa e o ano de atualização.
-- **Exportação Científica:** Geração de arquivo CSV formatado com codificação UTF-8 (BOM) e separador de ponto e vírgula, pronto para leitura limpa no Microsoft Excel.
+**Produção:** [appbench-ic.vercel.app](https://appbench-ic.vercel.app/)
 
 ---
 
-## Stack Tecnológica e Arquitetura
+## Funcionalidades
 
-O projeto adota uma arquitetura desacoplada (Frontend + Backend):
+### Dois modos de busca
+- **Por palavra-chave:** um ou vários termos separados por vírgula (ex: `gravidez, gestante, pré-natal`). Cada termo é pesquisado na Play Store e os resultados são unificados.
+- **Por concorrente:** cole a URL da Play Store (ou o ID, ex: `com.nu.production`) de um app e o AppBench monta a lista de concorrentes a partir dos "apps semelhantes" da própria loja, em dois níveis:
+  1. concorrentes diretos do app informado;
+  2. concorrentes dos 3 principais concorrentes diretos, mantendo só os da **mesma categoria** do app original (evita ruído, como redes sociais numa busca por bancos).
 
-### Frontend (Vitrine visual)
-- **Tecnologias:** React, TypeScript, Vite, CSS e Lucide Icons.
-- **Hospedagem:** Vercel (Gera páginas estáticas em CDN de alta performance).
+### Busca profunda (deep fetch)
+A listagem da Play Store traz poucos dados. Por isso, cada app encontrado tem sua página consultada individualmente para obter os metadados reais: nota, nº de avaliações, downloads, categoria, preço e data da última atualização.
 
-### Backend (Motor de extração)
-- **Tecnologias:** Node.js, Express, TypeScript e `google-play-scraper`.
-- **Hospedagem:** Render (Web Service ativo monitorando as requisições de raspagem).
-- **Endpoint da API:** `https://api-appbench.onrender.com/api/search`
+### Filtros configuráveis
+| Filtro | Opções |
+|---|---|
+| Nota mínima | Todas, 3.0+, 4.0+ (padrão), 4.5+ |
+| Mínimo de downloads | Qualquer, 10 mil+, 100 mil+, 1 mi+, 10 mi+ |
+| Preço | Todos, Gratuitos, Pagos |
+| Atualizados nos últimos 2 anos | liga/desliga |
+| Excluir jogos | liga/desliga (padrão: ligado) |
+
+O painel de resultados mostra quantos apps foram analisados, quantos ficaram na amostra e **quantos cada filtro removeu**, o que é útil para documentar a metodologia da pesquisa.
+
+### Duplicatas e relevância
+No modo palavra-chave, apps que aparecem em mais de um termo são marcados e sobem na ordenação. No modo concorrente, apps citados por mais listas sobem; depois, os maiores em downloads.
+
+### Exportação CSV
+Arquivo UTF-8 com BOM e separador `;`, abre direto no Excel em português, com acentuação correta.
 
 ---
 
-## Como rodar o projeto localmente
+## Arquitetura
 
-Para rodar este projeto na sua máquina para desenvolvimento, clone o repositório e siga os passos abaixo:
+Frontend e backend desacoplados, com o contrato da API compartilhado entre os dois:
 
-### 1. Inicializando a API (Servidor)
-Abra um terminal na pasta raiz e navegue até o backend:
+```
+appbench-ic/
+├── api/                  Backend: Node.js + Express + google-play-scraper (Render)
+│   └── src/
+│       ├── server.ts         monta o Express e registra as rotas
+│       ├── config.ts         limites, TTLs de cache, concorrência
+│       ├── types.ts          tipos internos da API
+│       ├── validation.ts     leitura e validação do corpo das requisições
+│       ├── routes/           /api/search e /api/similar
+│       ├── services/
+│       │   ├── playStore.ts  acesso à Play Store (com cache e retry)
+│       │   └── pipeline.ts   deep fetch → filtros → ordenação → resposta
+│       └── lib/              cache em memória, concorrência limitada, retry
+├── app/                  Frontend: React + TypeScript + Vite + Tailwind (Vercel)
+│   └── src/
+│       ├── App.tsx           composição da página
+│       ├── hooks/            useAppSearch (estado e ciclo da busca)
+│       ├── components/       Header, SearchForm, FiltersPanel, ResultsPanel, ResultsTable...
+│       └── lib/              cliente HTTP e exportação CSV
+└── shared/
+    └── contract.ts       tipos de requisição/resposta usados pela API e pelo app
+```
+
+**Proteções contra bloqueio do Google:** cache em memória (detalhes por 6h, listas por 1h, até 5.000 entradas), no máximo 4 requisições simultâneas, termos pesquisados em sequência e 1 nova tentativa em caso de falha.
+
+---
+
+## API
+
+Base: `https://api-appbench.onrender.com`
+
+| Método | Rota | Corpo |
+|---|---|---|
+| `POST` | `/api/search` | `{ "terms": ["gravidez", "gestante"], ...filtros }` |
+| `POST` | `/api/similar` | `{ "app": "com.nu.production", ...filtros }` |
+| `GET` | `/api/health` | — |
+
+Filtros (todos opcionais): `minScore`, `minInstalls`, `recentOnly`, `excludeGames`, `price` (`all` \| `free` \| `paid`), `lang` e `country` (padrão `pt` / `br`). Em `/api/search` também é aceito `limit` (resultados por termo, 1–100, padrão 50); o máximo é 10 termos por busca.
+
+A resposta segue o tipo `SearchResponse` de [`shared/contract.ts`](shared/contract.ts). Erros retornam `{ "error": "mensagem" }` com status 400 (entrada inválida), 404 (app não encontrado) ou 502 (falha na Play Store).
+
+> No plano gratuito do Render, o servidor "dorme" sem uso; a primeira busca pode levar até 1 minuto.
+
+---
+
+## Rodando localmente
+
+Requisito: Node.js 22+.
+
+**1. API**
 ```bash
 cd api
 npm install
-npm run dev
+npm run dev        # http://localhost:3333
 ```
 
-### 2. Inicializando o Frontend (Interface)
-Abra um novo terminal na pasta raiz e navegue até o frontend:
-
+**2. Frontend** (em outro terminal)
 ```bash
 cd app
 npm install
-npm run dev
+echo "VITE_API_URL=http://localhost:3333" > .env.local   # sem isso, usa a API de produção
+npm run dev        # http://localhost:5173
 ```
 
-Acesse a aplicação no seu navegador pelo link gerado pelo Vite (geralmente http://localhost:5173).
+### Scripts úteis
+| Pasta | Comando | O que faz |
+|---|---|---|
+| `api` | `npm run typecheck` | checagem de tipos |
+| `app` | `npm run lint` | lint (oxlint) |
+| `app` | `npm run build` | checagem de tipos + build de produção |
+
+### Mudando o contrato
+Os tipos de requisição e resposta ficam em `shared/contract.ts`. Ao mudá-los, rode `npm run typecheck` na `api` e `npm run build` no `app`: os dois lados acusam o que precisa ser ajustado. Algumas constantes ainda existem nos dois lados e precisam mudar juntas (há comentário em cada uma): opções de downloads (`ALLOWED_INSTALLS`) e o período de "atualizados recentemente" (`RECENT_YEARS`).
+
+---
+
+## Deploy
+- **Frontend (Vercel):** Root Directory `app`. A opção *Include files outside the root directory* deve ficar ativa (é o padrão), pois o build lê `shared/`.
+- **Backend (Render):** Root Directory `api`, start command `npm start`.

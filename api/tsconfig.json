@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     // Layout
-    "rootDir": "./src",
+    "rootDir": "..", // inclui ../shared (contrato com o frontend)
     "outDir": "./dist",
 
     // Ambiente: Node.js com ES Modules ("type": "module" no package.json)
@@ -27,5 +27,5 @@
     "skipLibCheck": true,
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": ["src", "../shared"]
 }

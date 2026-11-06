@@ -1,10 +1,10 @@
-import type { AppData, SearchMode } from '../types';
+import type { AppResult, SearchMode } from '../types';
 
 const cell = (value: string | number): string =>
   `"${String(value).replace(/\r?\n|\r/g, ' ').replace(/"/g, '""')}"`;
 
 /** Gera e baixa um CSV (UTF-8 com BOM, separador ";") compatível com o Excel em pt-BR. */
-export function exportToCSV(apps: AppData[], mode: SearchMode): void {
+export function exportToCSV(apps: AppResult[], mode: SearchMode): void {
   if (apps.length === 0) return;
 
   const originLabel = mode === 'similar' ? 'Origem (similar a)' : 'Palavras-Chave';
@@ -25,7 +25,7 @@ export function exportToCSV(apps: AppData[], mode: SearchMode): void {
       a.updatedAt ? a.updatedAt.slice(0, 10) : '',
       a.free ? 'Gratuito' : a.priceText,
       a.isDuplicate ? 'Sim' : 'Não',
-      a.keywordOrigin,
+      a.sources.join(', '),
       a.summary || 'Sem descrição',
       a.appId,
       a.url,
@@ -34,7 +34,7 @@ export function exportToCSV(apps: AppData[], mode: SearchMode): void {
       .join(';')
   );
 
-  const blob = new Blob(['﻿' + [header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const blob = new Blob(['﻿' +[header, ...rows].join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
