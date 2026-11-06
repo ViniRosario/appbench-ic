@@ -1,11 +1,15 @@
-import { Link2, Loader2, Search } from 'lucide-react';
+import { Globe, Link2, Loader2, Search } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { MARKETS } from '../lib/markets';
+import type { Market } from '../lib/markets';
 import type { SearchMode } from '../types';
 
 interface Props {
   mode: SearchMode;
   query: string;
   onQueryChange: (value: string) => void;
+  market: Market;
+  onMarketChange: (market: Market) => void;
   onSubmit: () => void;
   loading: boolean;
 }
@@ -13,17 +17,17 @@ interface Props {
 const MODE_COPY: Record<SearchMode, { placeholder: string; hint: string; icon: LucideIcon }> = {
   keyword: {
     placeholder: 'Ex: gravidez, gestante, cuidado pré-natal',
-    hint: 'Separe vários termos por vírgula para comparar e identificar apps em comum.',
+    hint: 'Separe vários termos por vírgula. Cada termo traz a lista completa que a loja exibe (até 250 apps).',
     icon: Search,
   },
   similar: {
     placeholder: 'Cole a URL da Play Store ou o ID do app (ex: com.nu.production)',
-    hint: 'Encontramos os concorrentes que a própria Play Store associa ao app informado.',
+    hint: 'Usamos a lista "Apps semelhantes" que a própria Play Store exibe na página do app informado.',
     icon: Link2,
   },
 };
 
-export function SearchForm({ mode, query, onQueryChange, onSubmit, loading }: Props) {
+export function SearchForm({ mode, query, onQueryChange, market, onMarketChange, onSubmit, loading }: Props) {
   const { placeholder, hint, icon: InputIcon } = MODE_COPY[mode];
 
   return (
@@ -47,6 +51,28 @@ export function SearchForm({ mode, query, onQueryChange, onSubmit, loading }: Pr
             autoFocus
           />
         </div>
+        <label
+          className="flex h-11 items-center gap-1.5 rounded-xl px-2 text-sm text-slate-600 sm:rounded-full sm:border-l sm:border-slate-200 sm:pl-3"
+          title="Loja (país) consultada. O idioma da loja define a língua dos textos dos apps."
+        >
+          <Globe className="size-4 shrink-0 text-slate-400" />
+          <span className="sr-only">Loja</span>
+          <select
+            value={market.country}
+            disabled={loading}
+            onChange={(e) => {
+              const next = MARKETS.find((m) => m.country === e.target.value);
+              if (next) onMarketChange(next);
+            }}
+            className="h-9 bg-transparent pr-1 text-sm outline-none disabled:opacity-60"
+          >
+            {MARKETS.map((m) => (
+              <option key={m.country} value={m.country}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="submit"
           disabled={loading || !query.trim()}
